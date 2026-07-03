@@ -117,6 +117,14 @@ The fully curated datasets and pre-trained adapter weights are permanently hoste
 
 ---
 
+## ⚖️ License & Terms of Use
+
+This project operates under a dual-license structure standard for machine learning research:
+* **The Codebase** (Scripts, algorithms, pipelines) is licensed under the **Apache License 2.0**.
+* **The Datasets & Model Weights** (hosted on Hugging Face) are licensed under **CC BY-NC 4.0** (Attribution-NonCommercial). They are strictly for academic and research purposes.
+
+---
+
 ## 📄 Citation & Academic Context
 
 If you utilize this infrastructure, the chunking algorithms, or the memory-safe MLX training commands in your own zero-resource NLP research, please cite our core paper:
