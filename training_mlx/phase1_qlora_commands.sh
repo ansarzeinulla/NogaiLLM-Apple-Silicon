@@ -15,7 +15,7 @@ mlx_lm.lora \
     --train \
     --iters 2500 \
     --batch-size 4 \
-    --lora-layers 16 \
+    --num-layers 16 \
     --learning-rate 2e-4 \
     --adapter-path "adapters/qwen_1.5b_nogai_phase1"
 

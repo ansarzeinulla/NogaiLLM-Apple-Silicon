@@ -1,0 +1,9 @@
+# Apple Silicon (macOS) training, evaluation, and data engineering dependencies.
+# NOTE: mlx-lm 0.31.x crashes on import with transformers 4.x/5.13
+# (AutoTokenizer.register incompatibility); 0.28.4 + transformers<5 is a
+# verified working combination.
+-r requirements.txt
+mlx>=0.31.0
+mlx-lm==0.28.4
+PyMuPDF
+nltk

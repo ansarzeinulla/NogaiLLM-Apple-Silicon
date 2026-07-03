@@ -1,5 +1,9 @@
+# Demo / deployment dependencies (HF Spaces compatible — no macOS-only packages).
+# For training & data engineering on Apple Silicon, see requirements-macos.txt.
 gradio>=4.0.0
-transformers>=4.38.0
+transformers>=4.38.0,<5
 peft>=0.8.0
 torch
 accelerate
+huggingface_hub
+safetensors

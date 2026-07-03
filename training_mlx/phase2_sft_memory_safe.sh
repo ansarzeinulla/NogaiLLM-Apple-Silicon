@@ -4,8 +4,10 @@
 # NogaiLLM Training Pipeline - Phase 2 (Supervised Fine-Tuning)
 # Curing Catastrophic Forgetting via ChatML multi-epoch alignment.
 #
-# HARWARE FIX: Implements dynamic Metal command buffer flushing 
-# (--clear-cache-threshold) to prevent descriptor leak panics on Apple Silicon.
+# HARDWARE FIX: Uses gradient checkpointing to bound peak Metal memory and
+# prevent descriptor leak panics on Apple Silicon. (The former
+# --clear-cache-threshold flag was removed from mlx-lm; --grad-checkpoint is
+# the supported memory-safety mechanism in current releases.)
 
 echo "Initializing Phase 2: Memory-Safe ChatML SFT Alignment..."
 
@@ -16,9 +18,9 @@ mlx_lm.lora \
     --train \
     --iters 2400 \
     --batch-size 2 \
-    --lora-layers 16 \
+    --num-layers 16 \
     --learning-rate 1e-5 \
-    --clear-cache-threshold 0.7 \
+    --grad-checkpoint \
     --adapter-path "adapters/qwen_1.5b_nogai_phase2_sft"
 
 echo "Phase 2 Complete. Instruction-following manifold mathematically restored."

@@ -86,8 +86,13 @@ def generate_translation(message, history):
     messages = [{"role": "system", "content": "You are a highly accurate bilingual translator for Russian and Nogai."}]
     if history:
         for interaction in history:
-            # Assuming interaction is a list/tuple of [user_msg, bot_msg]
-            if isinstance(interaction, (list, tuple)) and len(interaction) >= 2:
+            # gradio >= 5 passes history as ChatML-style dicts; older versions
+            # pass [user_msg, bot_msg] pairs. Support both.
+            if isinstance(interaction, dict) and interaction.get("role") in ("user", "assistant"):
+                content = interaction.get("content")
+                if isinstance(content, str) and content:
+                    messages.append({"role": interaction["role"], "content": content})
+            elif isinstance(interaction, (list, tuple)) and len(interaction) >= 2:
                 messages.append({"role": "user", "content": interaction[0]})
                 messages.append({"role": "assistant", "content": interaction[1]})
     messages.append({"role": "user", "content": message})
