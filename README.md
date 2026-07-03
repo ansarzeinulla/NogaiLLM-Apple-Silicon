@@ -1,9 +1,12 @@
 # ⚡️ NogaiLLM: Curing Catastrophic Forgetting in Zero-Resource Turkic NLP (Apple Silicon Native)
 
-[![Framework](https://img.shields.io/badge/Framework-Apple%20MLX-000000.svg?logo=apple&logoColor=white)](https://github.com/ml-explore/mlx)
+
+[![CI/CD Pipeline](https://github.com/ansarzeinulla/NogaiLLM-Apple-Silicon/actions/workflows/ml_integrity.yml/badge.svg)](https://github.com/ansarzeinulla/NogaiLLM-Apple-Silicon/actions)
 [![Paper](https://img.shields.io/badge/Paper-ACM%20TALLIP-B31B1B.svg)](#)
-[![Hugging Face](https://img.shields.io/badge/Hugging%20Face-Spaces%20Live-ffcc00.svg?logo=huggingface)](#)
-[![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](#)
+[![Hugging Face Space](https://img.shields.io/badge/🤗%20Test%20Live-Hugging%20Face%20Space-ffcc00.svg)](https://huggingface.co/spaces/ansarzeinulla/NogaiLLM-Zero-Resource)
+[![Models & Datasets](https://img.shields.io/badge/🤗%20HF%20Collection-Models%20%26%20Data-blue.svg)](https://huggingface.co/ansarzeinulla)
+[![Framework](https://img.shields.io/badge/Framework-Apple%20MLX-000000.svg?logo=apple&logoColor=white)](https://github.com/ml-explore/mlx)
+
 
 An end-to-end, reproducible machine learning pipeline engineered to adapt frontier Large Language Models (LLMs) to **mathematically isolated, zero-resource languages** (specifically, the endangered Nogai Cyrillic language). 
 
