@@ -1,0 +1,15 @@
+# .gitignore
+__pycache__/
+*.pyc
+.DS_Store
+
+# Do not upload raw data or models to GitHub! (That is what HF is for)
+*.pdf
+*.safetensors
+local_qwen_*/
+local_llama_*/
+adapters/
+converted_peft/
+
+# Evaluation outputs
+evaluation/results_*.txt
