@@ -30,12 +30,16 @@ def convert_mlx_to_peft():
         mlx_config = json.load(f)
 
     lora_params = mlx_config.get("lora_parameters", {})
+    rank = lora_params.get("rank", 8)
+    # mlx-lm stores an absolute "scale"; PEFT computes scaling as lora_alpha / r,
+    # so lora_alpha must equal scale * r for the adapter to keep its trained strength.
+    scale = lora_params.get("scale", 20.0)
     peft_config = {
         "base_model_name_or_path": BASE_MODEL_ID,
-        "lora_alpha": lora_params.get("alpha", 32),
+        "lora_alpha": scale * rank,
         "lora_dropout": lora_params.get("dropout", 0.0),
         "peft_type": "LORA",
-        "r": lora_params.get("rank", 16),
+        "r": rank,
         "target_modules": ["q_proj", "v_proj"],
         "task_type": "CAUSAL_LM",
     }
@@ -53,14 +57,16 @@ def convert_mlx_to_peft():
         tensor = tensor.to(torch.float32)
 
         # 2. Safely capture both standard mlx-lm key structures (.lora_a and .lora_a.weight)
+        # Checkpoint keys must NOT contain the adapter name (".default"): PEFT inserts
+        # it at load time, and keys carrying it are silently skipped as missing.
         if ".lora_a" in peft_key:
-            peft_key = peft_key.replace(".lora_a.weight", ".lora_A.default.weight")
-            peft_key = peft_key.replace(".lora_a", ".lora_A.default.weight")
+            peft_key = peft_key.replace(".lora_a.weight", ".lora_A.weight")
+            peft_key = peft_key.replace(".lora_a", ".lora_A.weight")
             tensor = tensor.t()
-            
+
         elif ".lora_b" in peft_key:
-            peft_key = peft_key.replace(".lora_b.weight", ".lora_B.default.weight")
-            peft_key = peft_key.replace(".lora_b", ".lora_B.default.weight")
+            peft_key = peft_key.replace(".lora_b.weight", ".lora_B.weight")
+            peft_key = peft_key.replace(".lora_b", ".lora_B.weight")
             tensor = tensor.t()
             
         peft_weights[peft_key] = tensor.contiguous()

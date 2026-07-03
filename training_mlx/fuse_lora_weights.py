@@ -8,6 +8,7 @@ Multi-Layer Perceptron (MLP) weights of the underlying base architecture.
 This standalone fused model is required before Phase 2 SFT can commence.
 """
 
+import json
 import shutil
 import logging
 import argparse
@@ -29,7 +30,17 @@ def load_tensor_map(path: Path) -> Dict[str, torch.Tensor]:
             tensors[key] = handle.get_tensor(key)
     return tensors
 
-def fuse_weights(base: Dict[str, torch.Tensor], adapter: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+def load_lora_scale(adapter_dir: Path) -> float:
+    """Reads the mlx-lm LoRA scale from adapter_config.json (delta = scale * B @ A)."""
+    config_path = adapter_dir / "adapter_config.json"
+    if not config_path.exists():
+        logger.warning("adapter_config.json not found; assuming mlx-lm default scale 20.0")
+        return 20.0
+    with open(config_path, "r") as f:
+        config = json.load(f)
+    return float(config.get("lora_parameters", {}).get("scale", 20.0))
+
+def fuse_weights(base: Dict[str, torch.Tensor], adapter: Dict[str, torch.Tensor], scale: float) -> Dict[str, torch.Tensor]:
     """Mathematically projects low-rank matrices (A and B) back onto the primary weight tensor."""
     fused = dict(base)
     adapter_bases = {key.rsplit(".", 1)[0] for key in adapter if key.endswith(".lora_a")}
@@ -49,8 +60,8 @@ def fuse_weights(base: Dict[str, torch.Tensor], adapter: Dict[str, torch.Tensor]
         lora_b = adapter[b_key]
         weight = base[weight_key]
 
-        # Execute matrix multiplication: W' = W + (B @ A)
-        delta = (lora_b.transpose(0, 1) @ lora_a.transpose(0, 1)).to(weight.dtype)
+        # Execute matrix multiplication: W' = W + scale * (B @ A)
+        delta = (scale * (lora_b.transpose(0, 1) @ lora_a.transpose(0, 1))).to(weight.dtype)
         fused[weight_key] = weight + delta
 
     return fused
@@ -73,8 +84,9 @@ def execute_fusion(base_dir: str, adapter_dir: str, output_dir: str):
     logger.info("Loading Phase 1 LoRA Matrix mappings...")
     adapter_tensors = load_tensor_map(adapter_path)
     
-    logger.info("Executing mathematical fusion operation...")
-    fused_tensors = fuse_weights(base_tensors, adapter_tensors)
+    scale = load_lora_scale(Path(adapter_dir))
+    logger.info(f"Executing mathematical fusion operation (LoRA scale: {scale})...")
+    fused_tensors = fuse_weights(base_tensors, adapter_tensors, scale)
 
     if out_path.exists():
         logger.warning(f"Overwriting existing directory at {out_path}")
