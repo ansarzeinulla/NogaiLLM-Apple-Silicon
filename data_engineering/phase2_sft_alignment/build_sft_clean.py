@@ -131,6 +131,20 @@ def main():
     rng.shuffle(rest)
     valid, train = rest[:n_valid], rest[n_valid:]
 
+    # A sentence can occur in two differently aligned pairs, so pair-level dedupe
+    # is not enough: move every eval pair that shares a Russian or Nogai side with
+    # train (or, for test, with valid) back into train.
+    def split_off_side_overlap(split, others):
+        ru = {p[0] for p in others}
+        ng = {p[1] for p in others}
+        keep = [p for p in split if p[0] not in ru and p[1] not in ng]
+        moved = [p for p in split if p[0] in ru or p[1] in ng]
+        return keep, moved
+
+    valid, moved_valid = split_off_side_overlap(valid, train)
+    test, moved_test = split_off_side_overlap(test, train + valid)
+    train = train + moved_valid + moved_test
+
     assert not (set(train) & set(valid)) and not (set(train) & set(test)) and not (set(valid) & set(test))
 
     out = Path(args.out_dir)
@@ -143,6 +157,7 @@ def main():
         "unique_pairs": len(pairs),
         "dropped_length_ratio": len(pairs) - len(aligned),
         "pairs_seen_in_cpt_corpus": len(seen),
+        "moved_to_train_side_overlap": len(moved_valid) + len(moved_test),
         "train_pairs": len(train),
         "valid_pairs": len(valid),
         "test_pairs": len(test),
