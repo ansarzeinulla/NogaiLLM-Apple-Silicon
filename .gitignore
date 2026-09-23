@@ -14,3 +14,5 @@ converted_peft/
 # Evaluation outputs
 evaluation/results_*.txt.DS_Store # optional: stop tracking them in future
 .DS_Store
+data_engineering/phase1_corpus/*.jsonl
+data_engineering/phase2_sft_alignment/sft_v2/

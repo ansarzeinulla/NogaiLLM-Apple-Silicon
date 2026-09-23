@@ -1,0 +1,12 @@
+{
+  "model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "adapter": "training_mlx/adapters/qwen_1.5b_nogai_phase1",
+  "data": "data_engineering/phase1_corpus/valid.jsonl",
+  "texts": 2000,
+  "scored_tokens": 117751,
+  "scored_bytes": 404452,
+  "bits_per_byte": 1.090986580995054,
+  "per_token_perplexity": 13.429453807492033,
+  "tokens_per_byte": 0.291137143591823,
+  "seconds": 200.3
+}

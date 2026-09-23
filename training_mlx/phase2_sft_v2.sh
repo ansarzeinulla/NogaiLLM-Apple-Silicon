@@ -2,7 +2,7 @@
 # phase2_sft_v2.sh
 #
 # NogaiLLM - Phase 2 SFT on the clean, leakage-free split from build_sft_clean.py
-# (sft_v2/train.jsonl, valid.jsonl, test.jsonl: 501/62/62 pairs, both directions).
+# (sft_v2/train.jsonl, valid.jsonl, test.jsonl: 507/60/58 pairs, both directions).
 # Same hyperparameters as the published v1 run; about 2 epochs of the new train split.
 # Trains three seeds so results can be reported as mean +/- spread, then reports
 # test loss/perplexity with mlx-lm --test.

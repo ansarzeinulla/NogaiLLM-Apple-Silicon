@@ -45,10 +45,11 @@ NogaiLLM-Apple-Silicon/
 |---|---|---|
 | [Nogai-Unified-Corpus-v1](https://huggingface.co/datasets/ansarzeinulla/Nogai-Unified-Corpus-v1) | Newspapers *Шоьл тавысы* (Dagestan) and *Ногай давысы* (Karachay-Cherkessia), IBT Bible translations, Wikimedia Incubator (Wp/nog) | 163,531 rows (155,354 train / 8,177 valid), 2.35 M words, 9.8 M Qwen2.5 tokens |
 | [Nogai-Russian-SFT-Biblical-v1](https://huggingface.co/datasets/ansarzeinulla/Nogai-Russian-SFT-Biblical-v1) | Russian–Nogai Bible passages (IBT), both translation directions | 4,310 rows = 650 unique pairs; see known issues |
+| [Nogai-Russian-SFT-Biblical-v2](https://huggingface.co/datasets/ansarzeinulla/Nogai-Russian-SFT-Biblical-v2) | The same pairs, deduplicated and split for evaluation | 625 pairs = 1,250 rows: 507 / 60 / 58 pairs (train / valid / test) |
 
 Corpus checks (September 2026): no exact duplicate rows; no validation row appears verbatim in train; about 0.4% of rows look Russian (Russian stop-word filtering removes most but not all of it).
 
-**SFT data, clean v2:** `build_sft_clean.py` removes duplicates, drops 25 pairs whose lengths show the Russian and Nogai sides are different passages, and splits **by pair** before creating the two directions: 501 / 62 / 62 pairs (train / valid / test), zero overlap. No test pair contains a sentence that occurs in the Phase 1 corpus.
+**SFT data, clean v2:** `build_sft_clean.py` removes duplicates, drops 25 pairs whose lengths show the Russian and Nogai sides are different passages, and splits **by pair** before creating the two directions: **507 / 60 / 58** pairs (train / valid / test), zero overlap. Because one verse can appear in two differently aligned pairs, any validation or test pair that shares a Russian or Nogai sentence with train (or, for test, with validation) is moved into train: 6 pairs. No test pair contains a sentence that occurs in the Phase 1 corpus.
 
 ```bash
 python data_engineering/phase2_sft_alignment/build_sft_clean.py --from-hf \

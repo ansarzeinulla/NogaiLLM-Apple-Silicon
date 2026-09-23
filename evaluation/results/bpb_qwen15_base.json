@@ -1,0 +1,12 @@
+{
+  "model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "adapter": null,
+  "data": "data_engineering/phase1_corpus/valid.jsonl",
+  "texts": 2000,
+  "scored_tokens": 117751,
+  "scored_bytes": 404452,
+  "bits_per_byte": 2.043506156153202,
+  "per_token_perplexity": 129.70137467538726,
+  "tokens_per_byte": 0.291137143591823,
+  "seconds": 212.2
+}
