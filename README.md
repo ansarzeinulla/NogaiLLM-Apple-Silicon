@@ -1,144 +1,117 @@
-# ⚡️ NogaiLLM: Curing Catastrophic Forgetting in Zero-Resource Turkic NLP (Apple Silicon Native)
-
+# NogaiLLM: Adapting Qwen2.5 to Nogai with LoRA on Apple Silicon
 
 [![CI/CD Pipeline](https://github.com/ansarzeinulla/NogaiLLM-Apple-Silicon/actions/workflows/ml_integrity.yml/badge.svg)](https://github.com/ansarzeinulla/NogaiLLM-Apple-Silicon/actions)
-[![Paper](https://img.shields.io/badge/Paper-ACM%20TALLIP-B31B1B.svg)](#)
-[![Hugging Face Space](https://img.shields.io/badge/🤗%20Test%20Live-Hugging%20Face%20Space-ffcc00.svg)](https://huggingface.co/spaces/ansarzeinulla/NogaiLLM-Zero-Resource)
+[![Hugging Face Space](https://img.shields.io/badge/🤗%20Demo-Hugging%20Face%20Space-ffcc00.svg)](https://huggingface.co/spaces/ansarzeinulla/NogaiLLM-Zero-Resource)
 [![Models & Datasets](https://img.shields.io/badge/🤗%20HF%20Collection-Models%20%26%20Data-blue.svg)](https://huggingface.co/ansarzeinulla)
 [![Framework](https://img.shields.io/badge/Framework-Apple%20MLX-000000.svg?logo=apple&logoColor=white)](https://github.com/ml-explore/mlx)
 
+Code, data pipeline and evaluation for adapting an instruction-tuned LLM (Qwen2.5-1.5B-Instruct) to **Nogai**, a Kipchak Turkic language written in Cyrillic, with almost no digital resources. Everything runs on a single Apple M2 Pro (16 GB) with `mlx-lm`.
 
-An end-to-end, reproducible machine learning pipeline engineered to adapt frontier Large Language Models (LLMs) to **mathematically isolated, zero-resource languages** (specifically, the endangered Nogai Cyrillic language). 
+Two stages:
 
-This repository contains the entire systems and data engineering framework used to execute **Parameter-Efficient Continuous Pre-Training (CPT)** and **Supervised Fine-Tuning (SFT)** entirely natively on Apple Silicon consumer hardware.
+1. **Phase 1, continued pre-training (CPT):** LoRA on raw Nogai text (*Nogai-Unified-Corpus-v1*). The model learns Nogai spelling and morphology but stops following chat instructions.
+2. **Phase 2, supervised fine-tuning (SFT):** LoRA on Russian↔Nogai translation pairs from human Bible translations, on top of the fused Phase 1 model, to bring instruction following back.
 
----
-
-## 🔬 Scientific Overview & Architectural Findings
-
-Expanding dense Byte-Pair Encoding (BPE) vocabularies to accommodate zero-resource agglutinative languages natively triggers two severe architectural failures, which this framework specifically resolves:
-
-1. **The Llama Latin-Centric Bottleneck:** Standard Western architectures (e.g., Llama-3.2) exhibit severe out-of-distribution (OOD) decay when forced to process isolated Cyrillic morphologies, frequently collapsing into autoregressive hallucination loops. Our ablation studies demonstrate that Eastern-optimized BPEs (Qwen-2.5) successfully map local Turkic morphology.
-2. **Catastrophic Forgetting of the Instruction Manifold:** When subjected to unstructured Continuous Pre-Training (Phase 1), the model's multi-head attention successfully learns the new vocabulary (dropping Perplexity from 191.13 to **12.14**), but its predictive routing overwrites the base model's instruction-following capabilities. It defaults to unconditional text generation.
-
-**NogaiLLM solves this via a Two-Phase Recovery Pipeline:**
-*   **Phase 1 (CPT):** Unstructured morphological acquisition via the rigorously isolated *Nogai Unified Corpus v1*.
-*   **Phase 2 (SFT):** Restoring the native `ChatML` multi-head attention routing using custom Proportional Sentence-Boundary Chunking and Bidirectional Tensor Alignment.
+> **Status (September 2026).** The first SFT dataset (v1) has duplicated rows and its validation rows also appear in its training rows, so the v1 validation/test numbers are not a measure of generalisation. This repo now includes a clean split (`build_sft_clean.py`), a bits-per-byte evaluation that is comparable across tokenizers, and chrF++/BLEU against human references. Results will be updated after re-running them.
 
 ---
 
-## 🗂️ Repository Architecture
+## 🗂️ Repository
 
 ```text
 NogaiLLM-Apple-Silicon/
-│
 ├── data_engineering/
-│   ├── phase1_corpus/          # Cross-lingual filtering, OCR repair, and isolation
-│   └── phase2_sft_alignment/   # Proportional chunking & Bidirectional tensor alignment
-│
-├── training_mlx/               # Native Apple Silicon Hardware Optimizations
-│   ├── phase1_qlora_commands.sh
-│   ├── phase2_sft_memory_safe.sh
-│   └── fuse_lora_weights.py    # Fuses Phase 1 LoRA matrices to base MLP
-│
-├── evaluation/                 # Architectural Ablation & Benchmarking
+│   ├── phase1_corpus/            # PDF/Wiki extraction, Russian filtering, JSONL compiler
+│   └── phase2_sft_alignment/     # IBT verse extraction, chunking, SFT builders (v1, clean v2)
+├── training_mlx/
+│   ├── phase1_cpt_lora.sh        # reproduces the published Phase 1 adapter
+│   ├── fuse_lora_weights.py      # fuses Phase 1 LoRA into the base model
+│   ├── phase2_sft_v1.sh          # the published v1 SFT run (for the record)
+│   ├── phase2_sft_v2.sh          # SFT on the clean split, 3 seeds, with test loss
+│   └── configs/                  # adapter_config.json of both published adapters
+├── evaluation/
+│   ├── eval_bits_per_byte.py     # Phase 1: bits per UTF-8 byte (tokenizer-independent)
+│   ├── eval_translation_chrf.py  # Phase 2: chrF++ / BLEU against human translations
+│   ├── typographic_density_metric.py
 │   ├── evaluate_phase1_few_shot.py
-│   ├── evaluate_phase2_sft_chatml.py
-│   └── typographic_density_metric.py
-│
-├── demo/                       # HF Spaces Deployment Engine
-│   └── app.py                  # Dynamic MLX-to-PEFT safe-tensor conversion
-│
-└── requirements.txt
+│   └── evaluate_phase2_sft_chatml.py
+├── demo/app.py                   # Gradio demo (Hugging Face Space)
+└── Makefile                      # make data / make train / make evaluate
 ```
 
----
+## 🛠️ Data
 
-## 🛠️ Data Engineering Pipeline
+| Dataset | Content | Size |
+|---|---|---|
+| [Nogai-Unified-Corpus-v1](https://huggingface.co/datasets/ansarzeinulla/Nogai-Unified-Corpus-v1) | Newspapers *Шоьл тавысы* (Dagestan) and *Ногай давысы* (Karachay-Cherkessia), IBT Bible translations, Wikimedia Incubator (Wp/nog) | 163,531 rows (155,354 train / 8,177 valid), 2.35 M words, 9.8 M Qwen2.5 tokens |
+| [Nogai-Russian-SFT-Biblical-v1](https://huggingface.co/datasets/ansarzeinulla/Nogai-Russian-SFT-Biblical-v1) | Russian–Nogai Bible passages (IBT), both translation directions | 4,310 rows = 650 unique pairs; see known issues |
 
-A zero-resource model is only as stable as its cross-lingual boundaries. The `data_engineering/` suite bypasses standard MT contamination through rigorous syntactic preservation:
+Corpus checks (September 2026): no exact duplicate rows; no validation row appears verbatim in train; about 0.4% of rows look Russian (Russian stop-word filtering removes most but not all of it).
 
-*   **Proportional Sentence Chunking (`proportional_chunker.py`):** Slavic and Turkic languages lack 1:1 syntactic mapping. Standard extraction scripts that truncate sequences by token count slice agglutinative words in half, destroying attention mappings. We implemented an algorithmic chunker that proportionally groups sequences to ensure every training sample contains grammatically intact thought blocks.
-*   **Bidirectional Tensor Alignment (`build_sft_train.py`):** To symmetrically stabilize the LLM's cross-attention mechanisms during Phase 2 SFT, prompts are mathematically mirrored (50% Russian $\rightarrow$ Nogai, 50% Nogai $\rightarrow$ Russian).
-
----
-
-## 💻 Hardware & Systems Optimization (Apple MLX)
-
-Training multi-epoch LLM adapters natively on macOS Metal backend introduces severe hardware bottlenecks. 
-
-### Resolving the Metal Descriptor Leak
-Extended backpropagation triggers a memory-leak panic (`0000000e:Internal Error`) where the macOS Metal driver accumulates active buffer handles faster than Python runtime garbage collection. In `phase2_sft_memory_safe.sh`, we explicitly resolve this by injecting `--clear-cache-threshold 0.7` into the MLX allocator, dynamically flushing command buffers and bottlenecking peak unified memory to a mathematically stable **5.734 GB**.
-
-### Dynamic MLX-to-PEFT Conversion (`app.py`)
-Apple MLX utilizes a proprietary `adapters.safetensors` structure that is incompatible with standard Hugging Face HuggingFace/Transformers deployments. Our Gradio application (`demo/app.py`) features a dynamic, on-the-fly tensor conversion engine that mathematically casts MLX low-rank matrices (`.lora_a` / `.lora_b`) back into standard PyTorch `PEFT` float32 structures for stable, cross-platform CPU deployment.
-
----
-
-## 📊 Evaluation & Ablation Metrics
-
-To objectively measure morphological acquisition vs. mode collapse, we engineered the **Nogai Typographic Density Metric** (`evaluation/typographic_density_metric.py`). This script measures the exact frequency of structurally accurate native digraphs (e.g., `нъ`, `аь`, `оь`, `уь`) against hallucination loops.
-
-| Model Configuration | Base Scale | Perplexity ($\downarrow$) | Nogai Typographic Density ($\uparrow$) | Status |
-| :--- | :---: | :---: | :---: | :--- |
-| **Qwen-2.5-1.5B (Phase 1 CPT)** | 1.5B | **12.14** | **15.05%** | ✅ Perfect Morphological Mapping |
-| Llama-3.2-1B (Phase 1 CPT) | 1.0B | 245.82 | 0.00% | ❌ OOD Mode Collapse |
-
----
-
-## 🚀 Quick Start: Running the Demo locally
-
-To test the structurally recovered (Phase 2) conversational model via the Gradio UI:
+**SFT data, clean v2:** `build_sft_clean.py` removes duplicates, drops 25 pairs whose lengths show the Russian and Nogai sides are different passages, and splits **by pair** before creating the two directions: 501 / 62 / 62 pairs (train / valid / test), zero overlap. No test pair contains a sentence that occurs in the Phase 1 corpus.
 
 ```bash
-# 1. Clone repository
-git clone https://github.com/yourusername/NogaiLLM-Apple-Silicon.git
-cd NogaiLLM-Apple-Silicon
-
-# 2. Install deployment dependencies
-pip install -r requirements.txt
-
-# 3. Launch the MLX-to-PEFT conversion and UI engine
-cd demo
-python app.py
+python data_engineering/phase2_sft_alignment/build_sft_clean.py --from-hf \
+    --cpt-corpus data_engineering/phase1_corpus --out-dir data_engineering/phase2_sft_alignment/sft_v2
 ```
-*Note: The demo automatically downloads the Phase 2 SFT adapter from Hugging Face and executes the tensor translation natively.*
 
----
+## 💻 Training (Apple M2 Pro, 16 GB, mlx-lm)
 
-## 📚 Datasets & Model Adapters
+Settings of the published adapters, copied from their `adapter_config.json` (`training_mlx/configs/`):
 
-The fully curated datasets and pre-trained adapter weights are permanently hosted on Hugging Face for academic reproducibility:
+| | Phase 1 (CPT) | Phase 2 (SFT v1) |
+|---|---|---|
+| Base | MLX copy of Qwen2.5-1.5B-Instruct (`local_qwen_1.5B`) | fused Phase 1 model |
+| LoRA | rank 8, scale 20, dropout 0; q/k/v/o/gate/up/down in layers 12–27 (16 blocks, 5.28 M parameters) | same |
+| Batch / iterations / learning rate | 2 / 2,500 / 2e-4 | 1 / 2,400 / 2e-5 |
+| Max sequence length | 512 | 512 |
 
-1.  **Phase 1 Corpus:** [Nogai Unified Corpus v1](https://huggingface.co/datasets/ansarzeinulla/Nogai-Unified-Corpus-v1)
-2.  **Phase 2 Corpus:** [Nogai-Russian SFT Biblical Corpus v1](https://huggingface.co/datasets/ansarzeinulla/Nogai-Russian-SFT-Biblical-v1)
-3.  **Phase 1 CPT Adapter:** [Qwen2.5-1.5B-Nogai-LoRA](https://huggingface.co/ansarzeinulla/Qwen2.5-1.5B-Nogai-LoRA)
-4.  **Phase 2 SFT Adapter:** [Qwen2.5-1.5B-Nogai-SFT-Experimental](https://huggingface.co/ansarzeinulla/Qwen2.5-1.5B-Nogai-SFT-Experimental)
+Long SFT runs crashed with a Metal `Internal Error`. The published SFT run was resumed from its last saved adapter (`resume_adapter_file` in its config). `clear_cache_threshold` was 0 and gradient checkpointing was off. Peak unified memory during SFT: 5.73 GB.
 
----
+```bash
+make data      # needs the raw PDFs and IBT texts (see Makefile)
+make train
+make evaluate
+```
 
-## ⚖️ License & Terms of Use
+## 📊 Evaluation
 
-This project operates under a dual-license structure standard for machine learning research:
-* **The Codebase** (Scripts, algorithms, pipelines) is licensed under the **Apache License 2.0**.
-* **The Datasets & Model Weights** (hosted on Hugging Face) are licensed under **CC BY-NC 4.0** (Attribution-NonCommercial). They are strictly for academic and research purposes.
+- **Phase 1:** bits per UTF-8 byte on the corpus validation split. Per-token perplexity is also printed but can't be compared between Qwen and Llama, whose tokenizers split Nogai very differently.
+- **Phase 2:** chrF++ and BLEU against the human IBT translations of the held-out test pairs, both directions, greedy decoding.
+- **Typographic Density (TD):** Nogai digraphs (аь, оь, уь, нъ) per 100 **words**. Human Nogai text scores **22.8**, so TD is reported as the distance from that value (`--reference`).
 
----
+Results from the first version (per-token perplexity 191.13 → 12.14 on Phase 1 for Qwen2.5-1.5B; Llama-3.2-1B emitting only end-of-sequence after CPT) are being re-measured with the methods above.
 
-## 📄 Citation & Academic Context
+## 🚀 Demo
 
-If you utilize this infrastructure, the chunking algorithms, or the memory-safe MLX training commands in your own zero-resource NLP research, please cite our core paper:
+The [Space](https://huggingface.co/spaces/ansarzeinulla/NogaiLLM-Zero-Resource) converts both MLX adapters to PEFT, merges Phase 1 into Qwen2.5-1.5B-Instruct and applies Phase 2 on top (CPU, float32). It is an experimental baseline: trained only on Bible text, it often answers modern-domain inputs with religious vocabulary.
+
+```bash
+pip install -r requirements.txt
+python demo/app.py
+```
+
+## ⚠️ Known issues
+
+- **SFT v1 data:** 4,310 rows but 1,300 unique; rows repeated up to 4×; all 200 unique validation rows also appear in train. The v1 validation/test loss is therefore optimistic. Use the clean v2 split.
+- **Proportional chunking** pairs blocks by position, not by verse number, so a few pairs are different passages (25 of 650 fail a length check). Verse-level alignment would remove this.
+- **Domain:** SFT data is Bible text only.
+
+## ⚖️ License
+
+Code: Apache-2.0. Datasets and adapters on Hugging Face: CC BY-NC 4.0.
+
+## 📄 Citation
 
 ```bibtex
-@article{zeinulla2026nogaillm,
-  title={NogaiLLM: Parameter-Efficient Continuous Pre-Training and Architectures of Catastrophic Forgetting in Zero-Resource Turkic Languages},
-  author={Zeinulla, Ansar},
-  journal={arXiv preprint arXiv:2607.xxxxx},
-  year={2026},
-  publisher={Nazarbayev University / ACM TALLIP}
+@misc{zeinulla2026nogaillm,
+  title  = {NogaiLLM: Parameter-Efficient Continued Pre-Training and Catastrophic Forgetting in Zero-Resource Turkic Languages},
+  author = {Zeinulla, Ansar},
+  year   = {2026},
+  note   = {Manuscript under revision. Code: https://github.com/ansarzeinulla/NogaiLLM-Apple-Silicon}
 }
 ```
 
 <div align="center">
-  <i>Engineered and maintained by Ansar Zeinulla • Nazarbayev University</i>
+  <i>Ansar Zeinulla · Nazarbayev University</i>
 </div>

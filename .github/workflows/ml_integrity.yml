@@ -27,8 +27,10 @@ jobs:
         # Stop the build if there are Python syntax errors or undefined names
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         
-    - name: Validate JSONL Schema Integrity
+    - name: Compile all Python scripts
       run: |
-        # A simple check to ensure your data engineering scripts compile
-        python -m py_compile data_engineering/phase2_sft_alignment/build_sft_train.py
-        python -m py_compile training_mlx/fuse_lora_weights.py
+        python -m compileall -q data_engineering evaluation training_mlx demo
+
+    - name: Check shell scripts parse
+      run: |
+        for f in training_mlx/*.sh; do bash -n "$f"; done

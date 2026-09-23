@@ -1,10 +1,13 @@
 """
 build_sft_train.py
 
-NogaiLLM Data Engineering Pipeline - Phase 2 (Script 4)
-Compiles the final Supervised Fine-Tuning (SFT) dataset. Applies Bidirectional 
-Tensor Alignment (50% Ru->Nog, 50% Nog->Ru) to symmetrically stabilize multi-head 
-attention routing. Formats output natively to the ChatML standard.
+NogaiLLM Data Engineering Pipeline - Phase 2 (Script 4, v1 - superseded)
+Builds the v1 SFT dataset: every parallel chunk becomes two ChatML rows
+(Russian->Nogai and Nogai->Russian), then the rows are shuffled and split 81/19.
+
+Known problem: the split happens AFTER mirroring, so the reverse direction of most
+validation rows is in train, and the validation loss is optimistic. Use
+build_sft_clean.py, which splits by pair first and adds a held-out test split.
 """
 
 import json

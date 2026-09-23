@@ -12,4 +12,5 @@ adapters/
 converted_peft/
 
 # Evaluation outputs
-evaluation/results_*.txt
+evaluation/results_*.txt.DS_Store # optional: stop tracking them in future
+.DS_Store

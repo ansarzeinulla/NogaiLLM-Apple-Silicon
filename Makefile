@@ -24,17 +24,23 @@ data:
 	python $(P2)/extract_ibt_verses.py --source_dir $(IBT_DIR) --output $(P2)/raw_parallel_blocks.jsonl
 	python $(P2)/analyze_sentence_alignment.py --input $(P2)/raw_parallel_blocks.jsonl --output $(P2)/aligned_sentences.jsonl
 	python $(P2)/proportional_chunker.py --input $(P2)/aligned_sentences.jsonl --output $(P2)/chunked_parallel.jsonl
-	python $(P2)/build_sft_train.py --input $(P2)/chunked_parallel.jsonl --train_out $(P2)/train.jsonl --valid_out $(P2)/valid.jsonl
+	python $(P2)/build_sft_clean.py --chunks $(P2)/chunked_parallel.jsonl --cpt-corpus $(P1) --out-dir $(P2)/sft_v2
 
 train:
 	@echo "=> Initiating MLX Apple Silicon Training Pipeline..."
-	cd training_mlx && bash phase1_qlora_commands.sh
+	cd training_mlx && bash phase1_cpt_lora.sh
 	cd training_mlx && python fuse_lora_weights.py
-	cd training_mlx && bash phase2_sft_memory_safe.sh
+	cd training_mlx && bash phase2_sft_v2.sh ../$(P2)/sft_v2
 
 evaluate:
-	@echo "=> Running Typographic Density Ablation..."
-	python evaluation/typographic_density_metric.py --dir evaluation/results/
+	mkdir -p evaluation/results
+	@echo "=> Bits per byte on held-out corpus text (base vs Phase 1)..."
+	python evaluation/eval_bits_per_byte.py --model Qwen/Qwen2.5-1.5B-Instruct --data $(P1)/valid.jsonl --out evaluation/results/bpb_base.json
+	python evaluation/eval_bits_per_byte.py --model Qwen/Qwen2.5-1.5B-Instruct --adapter training_mlx/adapters/qwen_1.5b_nogai_phase1 --data $(P1)/valid.jsonl --out evaluation/results/bpb_phase1.json
+	@echo "=> chrF++/BLEU on the held-out test pairs (Phase 1 base + Phase 2 SFT)..."
+	python evaluation/eval_translation_chrf.py --model training_mlx/local_qwen_1.5B_Nogai_Base --adapter training_mlx/adapters/sft_v2_seed0 --test $(P2)/sft_v2/test.jsonl --out evaluation/results/chrf_sft_v2_seed0.json --outputs-txt evaluation/results/results_sft_v2_seed0.txt
+	@echo "=> Typographic Density against the human reference..."
+	python evaluation/typographic_density_metric.py --dir evaluation/results/ --reference $(P1)/valid.jsonl
 
 clean:
 	@echo "=> Cleaning up cache and safely purging temp files..."
